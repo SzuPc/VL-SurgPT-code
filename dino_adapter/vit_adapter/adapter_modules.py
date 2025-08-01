@@ -115,7 +115,8 @@ class Extractor(nn.Module):
                                                   num_points=n_points,
                                                   value_proj_ratio=deform_ratio,
                                                   batch_first=True,
-                                                  im2col_step=128)
+                                                  im2col_step=1)
+        # im2col_step=128--->1
         self.with_cffn = with_cffn
         self.with_cp = with_cp
         if with_cffn:
@@ -163,7 +164,8 @@ class Injector(nn.Module):
                                                   num_points=n_points,
                                                   value_proj_ratio=deform_ratio,
                                                   batch_first=True,
-                                                  im2col_step=128)
+                                                  im2col_step=1)
+        # im2col_step=128--->1
         
         self.gamma = nn.Parameter(init_values * torch.ones((dim)), requires_grad=True)
 

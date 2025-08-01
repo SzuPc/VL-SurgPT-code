@@ -186,7 +186,17 @@ class TrackOnFF(TrackOn):
         coord_pred[:, 1] = (coord_pred[:, 1] / self.size[0]) * H
         coord_pred[:, 0] = (coord_pred[:, 0] / self.size[1]) * W
 
-        return coord_pred, vis_pred
+        # return coord_pred, vis_pred
+        return {
+        "q_t": q_t[:, :self.N],                             # (1, N, C)
+        "q_t_corr": q_t_corr[:, :self.N],                   # (1, N, C)
+        "h_t": h_t,                             # (1, P, C)
+        "p_head_t": p_head_t[:, :self.N],                   # (1, N, 2) - offset 后位置
+        "p_head_patch_t": p_head_patch_t[:, :self.N],       # (1, N, 2) - patch 索引位置
+        "coord_pred": coord_pred,            # (N, 2) - 实际输出坐标（解缩放）
+        "vis_pred": vis_pred,                # (N,) - 可见性 bool
+    }
+
 
 
 

@@ -115,15 +115,15 @@ def get_args():
     parser.add_argument('--epoch_num', type=int, default=150, help="Number of epochs")
     parser.add_argument('--lr', type=float, default=5e-4, help="Learning rate")
     parser.add_argument('--wd', type=float, default=1e-5, help="Weight decay")
-    parser.add_argument('--bs', type=int, default=16, help="Batch size per GPU")
+    parser.add_argument('--bs', type=int, default=1, help="Batch size per GPU")
     parser.add_argument('--amp', action="store_true")
     parser.add_argument('--loss_after_query', action="store_true")
 
     # === Misc ===
     parser.add_argument('--validation', action="store_true")
     parser.add_argument('--online_validation', action="store_true")
-    parser.add_argument('--model_save_path', type=str, default=None)  # saves under checkpoints folder
-    parser.add_argument('--checkpoint_path', type=str, default=None)
+    parser.add_argument('--model_save_path', type=str, default="/home/lenovo/acm_mm_dataset/track_on_text/checkpoints/save_checkpoints")  # saves under checkpoints folder
+    parser.add_argument('--checkpoint_path', type=str, default="/home/lenovo/acm_mm_dataset/track_on_text/checkpoints/track_on_checkpoint.pt")
     parser.add_argument('--seed', type=int, default=1234)
 
     args = parser.parse_args()

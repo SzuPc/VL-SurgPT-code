@@ -9,7 +9,6 @@ import torchvision.ops
 from mmcv.ops import MultiScaleDeformableAttention
 
 
-
 # Attention Block
 class MHA_Block(nn.Module):
     def __init__(self, hidden_size, num_heads, attn_drop=0.1, mlp_drop=0.1):

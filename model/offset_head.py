@@ -9,7 +9,6 @@ import torchvision.transforms as T
 from model.modules import DMSMHA_Block, get_deformable_inputs
 
 
-
 class Offset_Head(nn.Module):
     def __init__(self, args, nhead=8):
         super().__init__()
@@ -37,13 +36,22 @@ class Offset_Head(nn.Module):
             self.local_transformer.append(decoder_layer)
         self.local_transformer = nn.ModuleList(self.local_transformer)
 
+        
+
 
     def forward(self, q_t, f_t, target_coordinates):
         # :args q_t: (B, N, C)
         # :args f_t: (B, P, C)
         # :args target_coordinates: (B, N, 2), in size range
+        # :args states: (B, N), 状态索引
+        # :args coords: (B, N, 2), 点的坐标
         #
         # :return o_t: (B, layer_num, N, 2)
+
+
+        # 修改
+        # state_coord_features = self.state_coord_encoder(states, coords)  # (B, N, C)
+        # q_t = self.offset_fusion_module(q_t, state_coord_features)  # 使用独立的融合网络
 
         B, N, C = q_t.shape
         device = q_t.device

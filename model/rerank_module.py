@@ -11,6 +11,7 @@ from utils.coord_utils import indices_to_coords
 from model.modules import DMSMHA_Block, MHA_Block
 
 
+
 class Rerank_Module(nn.Module):
     def __init__(self, args, nhead=8):
         super().__init__()
@@ -52,6 +53,7 @@ class Rerank_Module(nn.Module):
             self.local_decoder.append(decoder_layer)
         self.local_decoder = nn.ModuleList(self.local_decoder)
 
+        
     def nms_topk(self, c_t, upper=512):
         # :args c_t: (B, N, P)
         #
@@ -144,6 +146,8 @@ class Rerank_Module(nn.Module):
         # :args q_t: (B, N, C)
         # :args h_t: (B, P, C)
         # :args c_t: (B, N, P)
+        # states: (B, N), 状态索引
+        # coords: (B, N, 2), 点的坐标
         #
         # :return q_t: (B, N, C)
         # :return top_patches_uncertainty: (B, N, top_k_regions)
@@ -152,6 +156,8 @@ class Rerank_Module(nn.Module):
         B, N, P = c_t.shape
         C = h_t.shape[2]
         device = c_t.device
+
+
 
 
         # === Get top k indices ===
@@ -205,4 +211,3 @@ class Rerank_Module(nn.Module):
         q_t = self.sample_query_fusion(torch.cat([q_t, q_t_query], dim=-1))                                     # (B, N, C)
 
         return q_t, top_patches_uncertainty, target_patch_locations
-  

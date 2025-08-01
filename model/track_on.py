@@ -1,4 +1,3 @@
-
 import os
 
 import torch
@@ -344,136 +343,239 @@ class TrackOn(nn.Module):
 
         return out
     
-    def inference(self, video, queries, K=20):
-        # :args video:      (B, T, C, H, W) in range [0, 255]
-        # :args queries:    (B, N, 3) where 3 is (t, y, x)
+    # def inference(self, video, queries, K=20):
+    #     # :args video:      (B, T, C, H, W) in range [0, 255]
+    #     # :args queries:    (B, N, 3) where 3 is (t, y, x)
         
 
+    #     B, T, C, H, W = video.shape
+    #     N = queries.shape[1]
+    #     device = video.device
+
+    #     out = {}
+
+    #     # ##### Scale inputs #####
+    #     queries[:, :, 2] = (queries[:, :, 2] / H) * self.size[0]
+    #     queries[:, :, 1] = (queries[:, :, 1] / W) * self.size[1]
+
+    #     if self.extend_queries:
+    #         extra_queries = get_points_on_a_grid(K, self.size, device)           # (1, K ** 2, 2)
+    #         extra_queries = torch.cat([torch.zeros(1, int(K ** 2), 1, device=device), extra_queries], dim=-1).to(device)
+    #         queries = torch.cat([queries, extra_queries], dim=1)        # (B, N + K ** 2, 3)
+
+    #     query_times = queries[:, :, 0].long()       
+        
+    #     # ##### ##### #####
+
+
+    #     # ##### Feature Encoder #####
+    #     # Extract Queries
+    #     q_init = self.backbone.sample_queries_online(video, queries)        # (B, N, C)
+    #     C = q_init.shape[-1]
+    #     # ##### ##### #####
+
+    #     # ##### Memory initialization #####
+    #     max_memory_size = max([self.query_decoder.memory_size, self.sm_query_updater.memory_size])
+    #     query_num = q_init.shape[1]
+
+    #     # Spatial Memory
+    #     spatial_memory = torch.zeros(B, query_num, max_memory_size, C, device=device)             # (B, N, max_memory_size, C)
+
+    #     # Context Memory
+    #     context_memory = torch.zeros(B, query_num, max_memory_size, C, device=device)             # (B, N, max_memory_size, C)
+
+    #     # Masking
+    #     past_occ = torch.ones(B, query_num, max_memory_size, device=device, dtype=torch.bool)     # (B, N, max_memory_size)
+    #     past_mask = torch.ones(B, query_num, max_memory_size, device=device, dtype=torch.bool)
+
+    #     # ##### ##### #####
+
+    #     coord_pred = []          # predicted coordinates
+    #     vis_pred = []            # visibility logits
+
+    #     for t in range(T):
+    #         queried_now_or_before = (query_times <= t)
+
+    #         # ##### Spatial Memory - Query Update #####
+    #         q_init_t = self.sm_query_updater(q_init, 
+    #                                         spatial_memory,
+    #                                         past_mask,
+    #                                         past_occ,
+    #                                         query_times,
+    #                                         t)
+    #         # ##### ##### #####
+
+    #         # ##### Visual Encoder #####
+    #         f_t = self.backbone.encode_frames_online(video[:, t])     # (B, P, C)
+    #         h_t = self.feature_decoder(f_t)                           # (B, P, C)
+    #         # ##### ##### #####
+
+    #         # ##### Query Decoder #####
+    #         q_t = self.query_decoder(q_init_t, f_t, context_memory.clone(), past_mask, queried_now_or_before)       # (B, N, C)
+    #         q_t = self.projection1(q_t)                                                                             # (B, N, C)
+    #         # ##### ##### #####
+
+    #         # ##### Correlation - 1 #####
+    #         c1_t = self.correlation(q_t, h_t)                                                         # (B, N, P)
+    #         # ##### ##### #####
+            
+    #         # ##### Reranking #####
+    #         q_t, top_k_u_logit, top_k_p = self.rerank_module(q_t, h_t, c1_t)                           # (B, N, C), (B, N, K), (B, N, K, 2) 
+    #         q_t_corr = self.projection2(q_t)                                                           # (B, N, C)
+    #         # ##### ##### #####
+
+    #         # ##### Correlation - 2 #####
+    #         c2_t = self.correlation(q_t_corr, h_t)                                                                     # (B, N, P)
+    #         p_head_patch_t = indices_to_coords(torch.argmax(c2_t, dim=-1).unsqueeze(1), self.size, self.stride)[:, 0]  # (B, N, 2)
+    #         # ##### ##### #####
+            
+    #         ####
+    #         # Text encoder and rerank p_head_patch_t
+    #         ####
+
+    #         # ##### Offset Prediction #####
+    #         o_t = self.offset_head(q_t_corr, h_t, p_head_patch_t)           # (B, #offset_layers, N, 2)
+    #         p_head_t = p_head_patch_t + o_t[:, -1]       # (B, N, 2)
+    #         # ##### ##### #####
+
+    #         # ##### Visibility and Uncertainty Prediction #####
+    #         v_t_logit, u_t_logit = self.visibility_head(q_t, h_t, p_head_t)  # (B, N), (B, N)
+    #         # ##### ##### #####
+
+    #         # ##### Memory Update #####
+    #         # Spatial Memory Update
+    #         q_aug = self.sm_query_updater.get_augmented_memory(q_init, q_t, f_t, p_head_t, query_times, t)   # (B, N, C)
+    #         spatial_memory = torch.cat([spatial_memory[:, :, 1:], q_aug.unsqueeze(2)], dim=2)                # (B, N, max_memory_size, C)
+
+    #         # Context Memory Update
+    #         context_memory = torch.cat([context_memory[:, :, 1:], q_t.unsqueeze(2)], dim=2)                                     # (B, N, max_memory_size, C)
+
+    #         # Masking Update
+    #         past_mask = torch.cat([past_mask[:, :, 1:], ~queried_now_or_before.unsqueeze(-1)], dim=2)                           # (B, N, memory_size)
+    #         past_occ = torch.cat([past_occ[:, :, 1:], (F.sigmoid(v_t_logit) < self.visibility_treshold).unsqueeze(-1)], dim=2)  # (B, N, memory_size)
+    #         # ##### ##### #####
+
+    #         coord_pred.append(p_head_t.unsqueeze(1))                    # (B, 1, N, 2)
+    #         vis_pred.append(v_t_logit.unsqueeze(1))                     # (B, 1, N)
+
+    #     # ##### Outputs #####
+    #     coord_pred = torch.cat(coord_pred, dim=1)       # (B, T, N_prime, 2)
+    #     vis_pred = torch.cat(vis_pred, dim=1)           # (B, T, N_prime)
+
+    #     if self.extend_queries:
+    #         coord_pred = coord_pred[:, :, :N]           # (B, T, N, 2)
+    #         vis_pred = vis_pred[:, :, :N]               # (B, T, N)
+
+    #     coord_pred[:, :, :, 1] = (coord_pred[:, :, :, 1] / self.size[0]) * H
+    #     coord_pred[:, :, :, 0] = (coord_pred[:, :, :, 0] / self.size[1]) * W
+
+    #     out["points"] = coord_pred
+    #     out["visibility"] = F.sigmoid(vis_pred) > self.visibility_treshold
+
+    #     return out
+
+
+
+
+    def inference(self, video, queries, K=20):
         B, T, C, H, W = video.shape
         N = queries.shape[1]
         device = video.device
-
         out = {}
 
-        # ##### Scale inputs #####
+        # ==== scale queries ====
         queries[:, :, 2] = (queries[:, :, 2] / H) * self.size[0]
         queries[:, :, 1] = (queries[:, :, 1] / W) * self.size[1]
 
         if self.extend_queries:
-            extra_queries = get_points_on_a_grid(K, self.size, device)           # (1, K ** 2, 2)
-            extra_queries = torch.cat([torch.zeros(1, int(K ** 2), 1, device=device), extra_queries], dim=-1).to(device)
-            queries = torch.cat([queries, extra_queries], dim=1)        # (B, N + K ** 2, 3)
+            extra_queries = get_points_on_a_grid(K, self.size, device)
+            extra_queries = torch.cat([torch.zeros(1, K ** 2, 1, device=device), extra_queries], dim=-1)
+            queries = torch.cat([queries, extra_queries], dim=1)
 
-        query_times = queries[:, :, 0].long()       
-        
-        # ##### ##### #####
+        query_times = queries[:, :, 0].long()
 
-
-        # ##### Feature Encoder #####
-        # Extract Queries
-        q_init = self.backbone.sample_queries_online(video, queries)        # (B, N, C)
+        # ==== initialize queries ====
+        q_init = self.backbone.sample_queries_online(video, queries)  # (B, N, C)
         C = q_init.shape[-1]
-        # ##### ##### #####
 
-        # ##### Memory initialization #####
-        max_memory_size = max([self.query_decoder.memory_size, self.sm_query_updater.memory_size])
-        query_num = q_init.shape[1]
+        # ==== init memory ====
+        max_mem = max(self.query_decoder.memory_size, self.sm_query_updater.memory_size)
+        spatial_memory = torch.zeros(B, N, max_mem, C, device=device)
+        context_memory = torch.zeros(B, N, max_mem, C, device=device)
+        past_occ = torch.ones(B, N, max_mem, device=device, dtype=torch.bool)
+        past_mask = torch.ones(B, N, max_mem, device=device, dtype=torch.bool)
 
-        # Spatial Memory
-        spatial_memory = torch.zeros(B, query_num, max_memory_size, C, device=device)             # (B, N, max_memory_size, C)
+        # ==== outputs ====
+        coord_pred, vis_pred, status_pred = [], [], []
 
-        # Context Memory
-        context_memory = torch.zeros(B, query_num, max_memory_size, C, device=device)             # (B, N, max_memory_size, C)
-
-        # Masking
-        past_occ = torch.ones(B, query_num, max_memory_size, device=device, dtype=torch.bool)     # (B, N, max_memory_size)
-        past_mask = torch.ones(B, query_num, max_memory_size, device=device, dtype=torch.bool)
-
-        # ##### ##### #####
-
-        coord_pred = []          # predicted coordinates
-        vis_pred = []            # visibility logits
+        p_head_t = queries[:, :, 1:]  # (B, N, 2)
+        q_init_t = q_init
 
         for t in range(T):
             queried_now_or_before = (query_times <= t)
 
-            # ##### Spatial Memory - Query Update #####
-            q_init_t = self.sm_query_updater(q_init, 
-                                            spatial_memory,
-                                            past_mask,
-                                            past_occ,
-                                            query_times,
-                                            t)
-            # ##### ##### #####
+            # Update spatial memory
+            q_init_t = self.sm_query_updater(q_init, spatial_memory, past_mask, past_occ, query_times, t)
 
-            # ##### Visual Encoder #####
-            f_t = self.backbone.encode_frames_online(video[:, t])     # (B, P, C)
-            h_t = self.feature_decoder(f_t)                           # (B, P, C)
-            # ##### ##### #####
+            # Encode current frame
+            f_t = self.backbone.encode_frames_online(video[:, t])
+            h_t = self.feature_decoder(f_t)
 
-            # ##### Query Decoder #####
-            q_t = self.query_decoder(q_init_t, f_t, context_memory.clone(), past_mask, queried_now_or_before)       # (B, N, C)
-            q_t = self.projection1(q_t)                                                                             # (B, N, C)
-            # ##### ##### #####
+            # Decode query
+            q_t = self.query_decoder(q_init_t, f_t, context_memory.clone(), past_mask, queried_now_or_before)
+            q_t = self.projection1(q_t)
 
-            # ##### Correlation - 1 #####
-            c1_t = self.correlation(q_t, h_t)                                                         # (B, N, P)
-            # ##### ##### #####
-            
-            # ##### Reranking #####
-            q_t, top_k_u_logit, top_k_p = self.rerank_module(q_t, h_t, c1_t)                           # (B, N, C), (B, N, K), (B, N, K, 2) 
-            q_t_corr = self.projection2(q_t)                                                           # (B, N, C)
-            # ##### ##### #####
+            # Compute similarity + rerank
+            c1_t = self.correlation(q_t, h_t)
+            q_t, _, _ = self.rerank_module(q_t, h_t, c1_t)
+            q_t_corr = self.projection2(q_t)
 
-            # ##### Correlation - 2 #####
-            c2_t = self.correlation(q_t_corr, h_t)                                                                     # (B, N, P)
-            p_head_patch_t = indices_to_coords(torch.argmax(c2_t, dim=-1).unsqueeze(1), self.size, self.stride)[:, 0]  # (B, N, 2)
-            # ##### ##### #####
+            # Localize patch
+            c2_t = self.correlation(q_t_corr, h_t)
+            p_head_patch_t = indices_to_coords(torch.argmax(c2_t, dim=-1).unsqueeze(1), self.size, self.stride)[:, 0]
 
-            # ##### Offset Prediction #####
-            o_t = self.offset_head(q_t_corr, h_t, p_head_patch_t)           # (B, #offset_layers, N, 2)
-            p_head_t = p_head_patch_t + o_t[:, -1]       # (B, N, 2)
-            # ##### ##### #####
+            # === [新增] 状态分类 & 偏移 ===
+            status_logits = self.status_classifier(q_t_corr, h_t, p_head_patch_t)     # (B, N, num_classes)
+            status_probs = torch.softmax(status_logits, dim=-1)                       # (B, N, num_classes)
+            status_embed = self.status_embed_mapper(status_probs)                     # (B, N, 512)
+            o_t = self.status_guided_offset(q_t_corr, h_t, p_head_patch_t, status_embed)  # (B, L, N, 2)
+            p_head_t = p_head_patch_t + o_t[:, -1]                                     # (B, N, 2)
+            status_class = torch.argmax(status_logits, dim=-1)                         # (B, N)
 
-            # ##### Visibility and Uncertainty Prediction #####
-            v_t_logit, u_t_logit = self.visibility_head(q_t, h_t, p_head_t)  # (B, N), (B, N)
-            # ##### ##### #####
+            # 可见性预测
+            v_t_logit, _ = self.visibility_head(q_t, h_t, p_head_t)
 
-            # ##### Memory Update #####
-            # Spatial Memory Update
-            q_aug = self.sm_query_updater.get_augmented_memory(q_init, q_t, f_t, p_head_t, query_times, t)   # (B, N, C)
-            spatial_memory = torch.cat([spatial_memory[:, :, 1:], q_aug.unsqueeze(2)], dim=2)                # (B, N, max_memory_size, C)
+            # 更新 memory
+            q_aug = self.sm_query_updater.get_augmented_memory(q_init, q_t, f_t, p_head_t, query_times, t)
+            spatial_memory = torch.cat([spatial_memory[:, :, 1:], q_aug.unsqueeze(2)], dim=2)
+            context_memory = torch.cat([context_memory[:, :, 1:], q_t.unsqueeze(2)], dim=2)
+            past_mask = torch.cat([past_mask[:, :, 1:], ~queried_now_or_before.unsqueeze(-1)], dim=2)
+            past_occ = torch.cat([past_occ[:, :, 1:], (F.sigmoid(v_t_logit) < self.visibility_treshold).unsqueeze(-1)], dim=2)
 
-            # Context Memory Update
-            context_memory = torch.cat([context_memory[:, :, 1:], q_t.unsqueeze(2)], dim=2)                                     # (B, N, max_memory_size, C)
+            # 保存当前帧预测
+            coord_pred.append(p_head_t.unsqueeze(1))         # (B, 1, N, 2)
+            vis_pred.append(v_t_logit.unsqueeze(1))          # (B, 1, N)
+            status_pred.append(status_class.unsqueeze(1))    # (B, 1, N)
 
-            # Masking Update
-            past_mask = torch.cat([past_mask[:, :, 1:], ~queried_now_or_before.unsqueeze(-1)], dim=2)                           # (B, N, memory_size)
-            past_occ = torch.cat([past_occ[:, :, 1:], (F.sigmoid(v_t_logit) < self.visibility_treshold).unsqueeze(-1)], dim=2)  # (B, N, memory_size)
-            # ##### ##### #####
-
-            coord_pred.append(p_head_t.unsqueeze(1))                    # (B, 1, N, 2)
-            vis_pred.append(v_t_logit.unsqueeze(1))                     # (B, 1, N)
-
-        # ##### Outputs #####
-        coord_pred = torch.cat(coord_pred, dim=1)       # (B, T, N_prime, 2)
-        vis_pred = torch.cat(vis_pred, dim=1)           # (B, T, N_prime)
+        # 拼接输出
+        coord_pred = torch.cat(coord_pred, dim=1)
+        vis_pred = torch.cat(vis_pred, dim=1)
+        status_pred = torch.cat(status_pred, dim=1)
 
         if self.extend_queries:
-            coord_pred = coord_pred[:, :, :N]           # (B, T, N, 2)
-            vis_pred = vis_pred[:, :, :N]               # (B, T, N)
+            coord_pred = coord_pred[:, :, :N]
+            vis_pred = vis_pred[:, :, :N]
+            status_pred = status_pred[:, :, :N]
 
+        # 坐标反归一化
         coord_pred[:, :, :, 1] = (coord_pred[:, :, :, 1] / self.size[0]) * H
         coord_pred[:, :, :, 0] = (coord_pred[:, :, :, 0] / self.size[1]) * W
 
-        out["points"] = coord_pred
+        out["points"] = coord_pred         # (B, T, N, 2)
         out["visibility"] = F.sigmoid(vis_pred) > self.visibility_treshold
+        out["status"] = status_pred        # (B, T, N)
 
         return out
 
 
-
-
-
-        
 
