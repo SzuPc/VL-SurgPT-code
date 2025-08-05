@@ -1,5 +1,4 @@
 # Bridging Vision and Language for Robust Context-Aware Surgical Point Tracking: The VL-SurgPT Dataset and Benchmark
-
 This repository contains the official implementation of the paper:
 
 > **Bridging Vision and Language for Robust Context-Aware Surgical Point Tracking: The VL-SurgPT Dataset and Benchmark**
